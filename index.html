@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONESHOT — One Guess. That's It.</title>
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#070b1a;--surface:rgba(255,255,255,0.04);--surface-hover:rgba(255,255,255,0.08);
+    --border:rgba(255,255,255,0.08);--accent:#06d6a0;--accent-dim:rgba(6,214,160,0.15);
+    --danger:#ef4444;--text:#e2e8f0;--text-dim:#64748b;--text-bright:#f8fafc;
+    --radius:12px;--radius-lg:20px;
+  }
+  html{font-size:16px}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+  body::before{content:'';position:fixed;top:-40%;left:-20%;width:140%;height:140%;background:radial-gradient(ellipse at 30% 20%,rgba(99,102,241,0.12) 0%,transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(6,214,160,0.08) 0%,transparent 50%);pointer-events:none;z-index:0}
+  .app{position:relative;z-index:1;width:100%;max-width:480px;padding:1rem;min-height:100dvh;display:flex;flex-direction:column}
+  .header{text-align:center;padding:2rem 0 1rem;cursor:pointer}
+  .logo{font-size:2.5rem;font-weight:800;letter-spacing:0.12em;background:linear-gradient(135deg,#06d6a0,#6366f1,#06d6a0);background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s ease infinite}
+  @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .tagline{color:var(--text-dim);font-size:0.85rem;margin-top:0.25rem;letter-spacing:0.05em}
+  .screen{display:none;flex-direction:column;flex:1;animation:fadeUp .35s ease}
+  .screen.active{display:flex}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+  /* Menu */
+  .menu-intro{text-align:center;color:var(--text-dim);font-size:0.9rem;margin:0.5rem 0 1.5rem;line-height:1.5}
+  .category-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem}
+  .category-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;cursor:pointer;transition:all .2s ease;position:relative;overflow:hidden}
+  .category-card:hover{background:var(--surface-hover);border-color:rgba(255,255,255,0.12);transform:translateY(-2px)}
+  .category-card:active{transform:translateY(0)}
+  .cat-icon{font-size:1.75rem;margin-bottom:0.4rem}
+  .cat-name{font-weight:700;font-size:0.95rem;color:var(--text-bright)}
+  .cat-meta{font-size:0.75rem;color:var(--text-dim);margin-top:0.15rem}
+  .cat-badge{display:inline-flex;align-items:center;gap:0.2rem;font-size:0.7rem;font-weight:600;margin-top:0.4rem;padding:0.15rem 0.5rem;border-radius:6px}
+  .cat-badge.progress{background:var(--accent-dim);color:var(--accent)}
+  .cat-badge.done{background:rgba(6,214,160,0.25);color:#06d6a0}
+  .cat-badge.streak{background:rgba(251,191,36,0.15);color:#fbbf24}
+
+  /* Round tracker */
+  .round-tracker{display:flex;gap:0.4rem;justify-content:center;padding:0.6rem 0}
+  .round-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;border:2px solid var(--border);color:var(--text-dim);transition:all .3s}
+  .round-dot.current{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+  .round-dot.win{border-color:var(--accent);background:var(--accent);color:#070b1a}
+  .round-dot.lose{border-color:var(--danger);background:var(--danger);color:#fff}
+
+  /* Summary */
+  .summary-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.25rem;padding:1rem 0}
+  .summary-title{font-size:1.5rem;font-weight:800;color:var(--text-bright)}
+  .summary-score{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#06d6a0,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .summary-sub{color:var(--text-dim);font-size:0.9rem}
+  .summary-rows{width:100%;max-width:340px;display:flex;flex-direction:column;gap:0.4rem}
+  .summary-row{display:flex;align-items:center;gap:0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.65rem 0.85rem;font-size:0.9rem}
+  .summary-row .sr-icon{font-size:1.1rem;width:24px;text-align:center}
+  .summary-row .sr-answer{flex:1;color:var(--text-bright);font-weight:600;text-align:left}
+  .summary-row .sr-clues{color:var(--text-dim);font-size:0.8rem}
+  .summary-row .sr-pts{font-weight:700;color:var(--accent);font-size:0.85rem}
+
+  /* Ready */
+  .ready-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.5rem}
+  .ready-icon{font-size:3.5rem}
+  .ready-title{font-size:1.5rem;font-weight:700;color:var(--text-bright)}
+  .ready-stats{display:flex;gap:2rem}
+  .ready-stat{display:flex;flex-direction:column;align-items:center}
+  .ready-stat-val{font-size:1.3rem;font-weight:700;color:var(--accent)}
+  .ready-stat-label{font-size:0.75rem;color:var(--text-dim);margin-top:0.15rem}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.85rem 2.5rem;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;transition:all .2s ease}
+  .btn-primary{background:var(--accent);color:#070b1a}
+  .btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+  .btn-ghost:hover{background:var(--surface-hover)}
+
+  /* Playing */
+  .play-header{position:sticky;top:0;z-index:10;background:rgba(7,11,26,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0.75rem 0;margin:0 -1rem;padding-left:1rem;padding-right:1rem}
+  .play-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem}
+  .play-category{font-size:0.8rem;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.08em}
+  .play-clue-count{font-size:0.8rem;color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+  .input-row{display:flex;gap:0.5rem}
+  .guess-input{flex:1;padding:0.7rem 1rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text-bright);font-size:1rem;outline:none;transition:border-color .2s}
+  .guess-input:focus{border-color:var(--accent)}
+  .guess-input::placeholder{color:var(--text-dim)}
+  .btn-shoot{padding:0.7rem 1.5rem;border:none;border-radius:var(--radius);background:var(--accent);color:#070b1a;font-weight:700;font-size:0.95rem;cursor:pointer;letter-spacing:0.04em;transition:all .15s;white-space:nowrap}
+  .btn-shoot:hover{filter:brightness(1.1)}
+  .btn-shoot:disabled{opacity:0.4;cursor:not-allowed}
+  .clue-progress{margin-top:0.5rem;height:3px;background:var(--surface);border-radius:2px;overflow:hidden}
+  .clue-progress-bar{height:100%;background:var(--accent);transition:width .4s ease;border-radius:2px}
+  .play-body{flex:1;display:flex;flex-direction:column;padding:0.75rem 0}
+  .next-clue-row{display:flex;justify-content:center;padding:0.5rem 0 0.75rem}
+  .btn-next{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.5rem;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--text-dim);font-size:0.85rem;font-weight:600;cursor:pointer;transition:all .2s}
+  .btn-next:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+  .btn-next:disabled{opacity:0.3;cursor:not-allowed;border-color:var(--border);color:var(--text-dim);background:transparent}
+  .clues-area{display:flex;flex-direction:column;gap:0.6rem}
+  .clue-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.85rem 1rem;animation:slideIn .4s ease;transition:all .3s ease}
+  .clue-card.latest{border-color:var(--accent);background:var(--accent-dim)}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+  .clue-num{font-size:0.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem}
+  .clue-text{font-size:0.95rem;line-height:1.5;color:var(--text-bright)}
+
+  /* Result */
+  .result-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.25rem;padding:1rem 0}
+  .result-verdict{font-size:1.8rem;font-weight:800}
+  .result-verdict.win{color:var(--accent)}
+  .result-verdict.lose{color:var(--danger)}
+  .result-answer{font-size:1.1rem;color:var(--text-dim);margin-top:0.5rem}
+  .result-answer strong{color:var(--text-bright)}
+  .result-answer .big-answer{display:block;font-size:2.4rem;font-weight:800;color:var(--accent);margin-top:0.3rem;letter-spacing:-0.02em;line-height:1.2}
+  .result-answer .big-answer.missed{color:var(--danger)}
+  .result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;width:100%;max-width:340px}
+  .result-cell{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 0.5rem}
+  .result-cell-val{font-size:1.2rem;font-weight:700;color:var(--text-bright)}
+  .result-cell-label{font-size:0.7rem;color:var(--text-dim);margin-top:0.2rem}
+  .share-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;width:100%;max-width:340px;font-family:monospace;font-size:0.85rem;line-height:1.6;color:var(--text-dim);text-align:left;white-space:pre-wrap}
+  .result-actions{display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center}
+  .copied-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--accent);color:#070b1a;padding:0.6rem 1.5rem;border-radius:var(--radius);font-weight:600;font-size:0.85rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+  .copied-toast.show{opacity:1}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:200}
+  @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-4px)}20%,40%,60%,80%{transform:translateX(4px)}}
+  .shake{animation:shake .5s ease}
+  .score-pop{font-size:3rem;font-weight:800;background:linear-gradient(135deg,#06d6a0,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:popIn .5s cubic-bezier(0.175,0.885,0.32,1.275)}
+  @keyframes popIn{from{opacity:0;transform:scale(0.5)}to{opacity:1;transform:scale(1)}}
+  .footer{text-align:center;padding:1.5rem 0 1rem;font-size:0.75rem;color:var(--text-dim)}
+  @media(max-width:400px){.logo{font-size:2rem}.category-grid{gap:0.5rem}.category-card{padding:0.75rem}}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div class="app">
+  <header class="header" id="home-btn">
+    <div class="logo">ONESHOT</div>
+    <div class="tagline">One Guess. That's It.</div>
+  </header>
+  <div id="menu" class="screen active">
+    <p class="menu-intro">Reveal clues one at a time. You get <strong style="color:var(--accent)">one guess</strong>. Make it count.</p>
+    <div class="category-grid" id="category-list"></div>
+  </div>
+  <div id="ready" class="screen">
+    <div class="ready-wrap">
+      <div class="ready-icon" id="ready-icon"></div>
+      <div class="ready-title" id="ready-title"></div>
+      <div class="ready-sub" style="color:var(--text-dim);font-size:0.9rem" id="ready-sub"></div>
+      <button class="btn btn-primary" id="btn-start">S T A R T</button>
+      <button class="btn btn-ghost" id="btn-back-ready">Back</button>
+    </div>
+  </div>
+  <div id="playing" class="screen">
+    <div class="play-header">
+      <div class="round-tracker" id="play-tracker"></div>
+      <div class="play-meta">
+        <span class="play-category" id="play-cat"></span>
+        <span class="play-clue-count" id="play-clue-count"></span>
+      </div>
+      <div class="input-row">
+        <input type="text" class="guess-input" id="guess-input" placeholder="Take your shot..." autocomplete="off" spellcheck="false">
+        <button class="btn-shoot" id="btn-shoot">SHOOT</button>
+      </div>
+      <div class="clue-progress"><div class="clue-progress-bar" id="progress-bar"></div></div>
+    </div>
+    <div class="play-body">
+      <div class="clues-area" id="clues-area"></div>
+    </div>
+  </div>
+  <div id="result" class="screen">
+    <div class="result-wrap">
+      <div class="round-tracker" id="result-tracker"></div>
+      <div class="result-verdict" id="result-verdict"></div>
+      <div class="score-pop" id="result-score" style="display:none"></div>
+      <div class="result-answer" id="result-answer"></div>
+      <div class="result-grid">
+        <div class="result-cell"><div class="result-cell-val" id="res-clue"></div><div class="result-cell-label">Clues Used</div></div>
+        <div class="result-cell"><div class="result-cell-val" id="res-score"></div><div class="result-cell-label">Score</div></div>
+        <div class="result-cell"><div class="result-cell-val" id="res-total"></div><div class="result-cell-label">Total</div></div>
+      </div>
+      <div class="result-actions">
+        <button class="btn btn-primary" id="btn-next-puzzle">Next Puzzle</button>
+        <button class="btn btn-ghost" id="btn-quit">Quit to Menu</button>
+      </div>
+    </div>
+  </div>
+  <div id="summary" class="screen">
+    <div class="summary-wrap">
+      <div class="summary-title" id="summary-title"></div>
+      <div class="summary-score" id="summary-score"></div>
+      <div class="summary-sub" id="summary-sub"></div>
+      <div class="round-tracker" id="summary-tracker"></div>
+      <div class="summary-rows" id="summary-rows"></div>
+      <div class="share-card" id="share-card"></div>
+      <div class="result-actions">
+        <button class="btn btn-primary" id="btn-share">Copy Result</button>
+        <button class="btn btn-ghost" id="btn-summary-menu">Back to Menu</button>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">ONESHOT &mdash; a trivia experiment</footer>
+</div>
+<div class="copied-toast" id="toast">Copied!</div>
+<script>
+const CATEGORIES = [
+  {key:'sports',icon:'🏆',label:'Sports'},
+  {key:'music',icon:'🎵',label:'Music'},
+  {key:'movies',icon:'🎬',label:'Movies'},
+  {key:'history',icon:'📜',label:'History'},
+  {key:'science',icon:'🔬',label:'Science'},
+  {key:'tv',icon:'📺',label:'TV Shows'},
+  {key:'geography',icon:'🌍',label:'Geography'},
+  {key:'literature',icon:'📚',label:'Literature'},
+];
+
+const PUZZLES = {
+sports: [
+  {answer:'Michael Jordan',accepted:['michael jordan','jordan','mj','air jordan'],clues:[
+    'Born in Brooklyn, New York in 1963, but raised in Wilmington, North Carolina.',
+    'Was cut from his high school varsity basketball team as a sophomore.',
+    'His father was murdered at a highway rest stop in the summer of 1993.',
+    'Won a national championship with the University of North Carolina as a freshman in 1982.',
+    'Selected third overall in the 1984 NBA Draft — behind Hakeem Olajuwon and Sam Bowie.',
+    'Won the NBA Rookie of the Year award in his first professional season.',
+    'Once scored 63 points in a single playoff game against the Boston Celtics.',
+    'Known for his signature tongue-out move while driving to the basket.',
+    'Starred alongside Bugs Bunny in a blockbuster film.',
+    'Briefly retired from basketball to play minor league baseball in 1994.',
+    'His comeback announcement was famously just two words: "I\'m back."',
+    'Led his team to two separate three-peats of NBA championships in the 1990s.',
+    'Hit the game-winning shot in the 1998 NBA Finals, known as "The Last Shot."',
+    'His signature sneaker line became one of the best-selling brands in history.',
+    'Wore the number 23 and is widely considered the greatest basketball player of all time.',
+  ]},
+  {answer:'Serena Williams',accepted:['serena williams','serena','williams'],clues:[
+    'Born in Saginaw, Michigan in 1981, but raised in Compton, California.',
+    'Her father coached her and her sister using a 78-page plan he wrote before they were born.',
+    'She practiced on cracked public courts in a neighborhood known for gang violence.',
+    'She turned professional at age 14 in 1995.',
+    'She won her first Grand Slam title at the US Open in 1999 at age 17.',
+    'She has won Olympic gold medals in both singles and doubles.',
+    'She once boycotted a prestigious tournament for 14 years after her family faced racist abuse there.',
+    'She suffered a life-threatening pulmonary embolism shortly after giving birth to her daughter.',
+    'Her powerful serve has been clocked at over 128 mph.',
+    'She has won more Grand Slam singles titles in the Open Era than any other player — 23.',
+    'Her rivalry with her older sister created some of the most dramatic matches in the sport\'s history.',
+    'She wore a black catsuit at the French Open, sparking controversy over dress codes.',
+    'She married Reddit co-founder Alexis Ohanian in 2017.',
+    'She appeared on the cover of Sports Illustrated as Sportsperson of the Year in 2015.',
+    'Widely regarded as the greatest female tennis player of all time.',
+  ]},
+  {answer:'Muhammad Ali',accepted:['muhammad ali','ali','cassius clay'],clues:[
+    'Born Cassius Marcellus Clay Jr. in Louisville, Kentucky in 1942.',
+    'He started boxing at age 12 after his bicycle was stolen and a police officer suggested he learn to fight.',
+    'He won a gold medal at the 1960 Rome Olympics as a light heavyweight.',
+    'He famously predicted the round in which he would knock out his opponents.',
+    'He upset Sonny Liston in 1964 to become the heavyweight champion at age 22.',
+    'He changed his name after converting to Islam and joining the Nation of Islam.',
+    'He was stripped of his title and banned from boxing for three years for refusing the Vietnam War draft.',
+    'He said "I ain\'t got no quarrel with them Viet Cong" when explaining his refusal.',
+    'His fight against George Foreman in Zaire in 1974 was called "The Rumble in the Jungle."',
+    'He developed the "rope-a-dope" strategy to exhaust his opponents.',
+    'He fought Joe Frazier three times, including "The Thrilla in Manila."',
+    'He lit the Olympic cauldron at the 1996 Atlanta Games despite trembling from Parkinson\'s disease.',
+    'He was known for his self-proclaimed motto: "Float like a butterfly, sting like a bee."',
+    'He was diagnosed with Parkinson\'s syndrome in 1984, likely linked to his boxing career.',
+    'Often called "The Greatest," he is considered the most celebrated heavyweight boxer in history.',
+  ]},
+  {answer:'Wayne Gretzky',accepted:['wayne gretzky','gretzky','the great one'],clues:[
+    'Born in Brantford, Ontario, Canada in 1961.',
+    'At age six, he was already playing against ten-year-olds.',
+    'He wore the number 99 throughout his entire professional career.',
+    'By age 10, he scored 378 goals in a single season of youth hockey.',
+    'He was traded from Edmonton to Los Angeles in 1988, a deal so shocking it made Canadians cry.',
+    'He holds the NHL record for most career goals at 894.',
+    'His career assists alone would make him the all-time leading scorer, even with zero goals.',
+    'He won four Stanley Cup championships, all with the same team.',
+    'His jersey number was retired league-wide by the NHL — the only player to receive that honor.',
+    'He won the Hart Trophy as MVP nine times, eight of them consecutive.',
+    'He once scored 50 goals in just 39 games, shattering the previous record.',
+    'His trade to the Kings was so significant in Canada it was simply called "The Trade."',
+    'His wife is actress Janet Jones, married in a ceremony dubbed "Canada\'s Royal Wedding."',
+    'He played his final game in 1999 and was inducted into the Hockey Hall of Fame that same year.',
+    'Known as "The Great One," he is universally regarded as the greatest hockey player of all time.',
+  ]},
+  {answer:'Usain Bolt',accepted:['usain bolt','bolt'],clues:[
+    'Born in Sherwood Content, a small town in Trelawny Parish, Jamaica in 1986.',
+    'As a child, he was more interested in cricket and football than sprinting.',
+    'His high school cricket coach noticed his speed and encouraged him to try track instead.',
+    'He became the youngest ever junior gold medalist at the 2002 World Junior Championships at age 15.',
+    'He stands 6 feet 5 inches tall — unusually tall for a sprinter, initially seen as a disadvantage.',
+    'He set the 100m world record of 9.58 seconds at the 2009 World Championships in Berlin.',
+    'He celebrated by slowing down before the finish line at the 2008 Beijing Olympics, still breaking the world record.',
+    'He also holds the 200m world record at 19.19 seconds.',
+    'He completed an unprecedented "triple-triple" — winning 100m, 200m, and 4x100m relay at three consecutive Olympics.',
+    'His signature pose involves leaning back and pointing to the sky like an archer.',
+    'He was later stripped of one relay gold after a teammate tested positive for doping.',
+    'His last name has become a common pun in headlines about sprinting.',
+    'He briefly pursued a professional football career after retiring from track.',
+    'His trademark celebration involved drawing a lightning bolt shape with his arms.',
+    'The fastest man in recorded history, a Jamaican sprinter who dominated the 100m and 200m.',
+  ]},
+],
+music: [
+  {answer:'Pink Floyd',accepted:['pink floyd','floyd'],clues:[
+    'Formed in London in 1965 by architecture students.',
+    'Named after two American blues musicians — Pink Anderson and Floyd Council.',
+    'Their original frontman was forced out of the band due to declining mental health.',
+    'One of their earliest hits was about a man who steals women\'s underwear from clotheslines.',
+    'They once performed a concert with no audience — playing to rows of empty seats for a film.',
+    'Their record label once released a single without their permission, which they resented.',
+    'They pioneered the use of quadraphonic sound systems in live concerts.',
+    'Their 1973 album spent over 900 weeks on the Billboard 200 chart.',
+    'They projected giant inflatable puppets and flying pigs during their live shows.',
+    'One of their albums was inspired by the absence of their former bandmate, about loss and regret.',
+    'One of their albums was recorded with virtually no collaboration between band members in the same room.',
+    'They built an actual wall across the stage during concerts for one of their most famous tours.',
+    'Their reunion at Live 8 in 2005 was one of the most anticipated events in rock history.',
+    'Their 1973 masterpiece\'s cover features light passing through a glass prism.',
+    'Known for songs like "Comfortably Numb", "Wish You Were Here", and "Money".',
+  ]},
+  {answer:'The Beatles',accepted:['the beatles','beatles'],clues:[
+    'Formed in Liverpool, England in 1960 from the remnants of a skiffle group called The Quarrymen.',
+    'They were rejected by Decca Records, who said "guitar groups are on the way out."',
+    'They spent years playing grueling sets in Hamburg, Germany before achieving fame.',
+    'Their manager, Brian Epstein, cleaned up their image by putting them in matching suits.',
+    'Their appearance on The Ed Sullivan Show in 1964 was watched by 73 million Americans.',
+    'They once claimed to be "more popular than Jesus," causing record burnings across the American South.',
+    'Their 1967 album is considered the first concept album in rock, featuring a military band persona.',
+    'They traveled to India to study Transcendental Meditation with Maharishi Mahesh Yogi.',
+    'They performed their final live concert on a London rooftop in January 1969.',
+    'Their producer, George Martin, was often called "the fifth member" of the group.',
+    'They released iconic albums including "Revolver," "Abbey Road," and "Let It Be."',
+    'Their breakup in 1970 was one of the most publicized events in music history.',
+    'John Lennon and Paul McCartney are considered one of the greatest songwriting partnerships ever.',
+    '"Yesterday" by this group is the most covered song in the history of recorded music.',
+    'The best-selling music act of all time, a British band that led the "British Invasion" of the 1960s.',
+  ]},
+  {answer:'Queen',accepted:['queen'],clues:[
+    'Formed in London in 1970 when a guitarist and drummer recruited a new vocalist for their band.',
+    'Their lead singer was born Farrokh Bulsara in Zanzibar to Indian Parsi parents.',
+    'Their guitarist built his guitar from an old fireplace mantel and is also an astrophysicist.',
+    'Their song "Bohemian Rhapsody" was considered too long for radio at nearly six minutes.',
+    'The "Bohemian Rhapsody" music video is often credited as one of the first true music videos.',
+    'Their lead singer had four extra teeth which he believed gave him greater vocal range.',
+    'They performed one of the most legendary sets in history at Live Aid in 1985 at Wembley Stadium.',
+    '"We Will Rock You" was designed so audiences could participate by stomping and clapping.',
+    'The lead singer kept his AIDS diagnosis private until the day before his death in 1991.',
+    'Their music was featured in the films "Wayne\'s World" and "Highlander."',
+    '"Another One Bites the Dust" was a massive crossover hit on both rock and R&B charts.',
+    '"We Are the Champions" is played at sports events worldwide.',
+    'A 2018 biographical film about the band won the Academy Award for Best Actor.',
+    'Their lead singer\'s vocal range reportedly spanned four octaves.',
+    'A British rock band whose lead singer, Freddie Mercury, is considered one of the greatest vocalists ever.',
+  ]},
+  {answer:'Bob Dylan',accepted:['bob dylan','dylan'],clues:[
+    'Born Robert Allen Zimmerman in Duluth, Minnesota in 1941.',
+    'He took his stage name possibly inspired by the Welsh poet Dylan Thomas.',
+    'He dropped out of university and moved to New York City in 1961 to visit his idol, Woody Guthrie.',
+    'His early protest songs became anthems of the civil rights and anti-war movements.',
+    'He controversially "went electric" at the 1965 Newport Folk Festival, angering folk purists.',
+    'He survived a mysterious motorcycle accident in 1966 and retreated from public life for years.',
+    'His album "Highway 61 Revisited" is considered one of the greatest albums ever recorded.',
+    'He was booed by audiences in England during his 1966 tour; one fan famously called him "Judas!"',
+    '"Like a Rolling Stone" was voted the greatest song of all time by Rolling Stone magazine.',
+    'He released a gospel trilogy of albums after converting to Christianity in the late 1970s.',
+    'His "Never Ending Tour" has seen him perform over 3,000 shows since 1988.',
+    'He won the Nobel Prize in Literature in 2016 and initially didn\'t respond for weeks.',
+    '"Blowin\' in the Wind" and "The Times They Are a-Changin\'" defined a generation.',
+    'He is considered one of the most influential figures in popular music and culture.',
+    'An American singer-songwriter widely regarded as one of the greatest lyricists in music history.',
+  ]},
+  {answer:'Elvis Presley',accepted:['elvis presley','elvis','the king'],clues:[
+    'Born in Tupelo, Mississippi in 1935 — his identical twin brother was delivered stillborn.',
+    'His family moved to Memphis, Tennessee when he was 13, immersing him in blues and gospel.',
+    'He recorded his first songs at Sun Records as a gift for his mother, paying $4 for the session.',
+    'His manager, Colonel Tom Parker, was actually an illegal immigrant from the Netherlands.',
+    'His hip-shaking performances were so controversial he was filmed only from the waist up on Ed Sullivan.',
+    'He was drafted into the U.S. Army in 1957 and served in Germany.',
+    'He married Priscilla Beaulieu in 1967; she was 14 when they first met in Germany.',
+    'He starred in 31 Hollywood films, most of them musicals with formulaic plots.',
+    'His 1968 "Comeback Special" revived his career after years of mediocre movies.',
+    'He performed a legendary residency at the International Hotel in Las Vegas starting in 1969.',
+    'His jumpsuits became increasingly elaborate, studded with rhinestones and capes.',
+    'He was secretly sworn in as a federal agent by President Nixon in a bizarre White House meeting.',
+    'He died at his home, Graceland, in Memphis on August 16, 1977, at age 42.',
+    'Graceland is the second most-visited private home in America, after the White House.',
+    'Known as "The King of Rock and Roll," one of the most significant cultural icons of the 20th century.',
+  ]},
+],
+movies: [
+  {answer:'The Shawshank Redemption',accepted:['the shawshank redemption','shawshank redemption','shawshank'],clues:[
+    'Based on a novella by Stephen King called "Rita Hayworth and Shawshank Redemption".',
+    'It was a box-office disappointment when first released in 1994.',
+    'The director, Frank Darabont, bought the film rights for just $5,000.',
+    'Filming took place at a real decommissioned prison in Mansfield, Ohio.',
+    'The lead role was offered to Tom Hanks, who was busy with Forrest Gump.',
+    'One of the actors had to be taught how to play the harmonica for his role.',
+    'The bird used in the film was trained to sit on the actor\'s finger on cue.',
+    'Morgan Freeman narrates the entire film in his iconic voice.',
+    'The warden keeps a Bible with a secret carved-out compartment.',
+    'A key plot element involves a rock hammer and a poster of a movie star.',
+    'The main character uses his banking skills to launder money for the corrupt warden.',
+    'The fictional prison is located in Maine.',
+    'The warden\'s office scene features the line "Salvation lies within."',
+    'It has held the #1 spot on IMDb\'s Top 250 user-rated films for many years.',
+    'The climactic scene involves a man crawling through a sewer pipe to freedom in the rain.',
+  ]},
+  {answer:'The Godfather',accepted:['the godfather','godfather'],clues:[
+    'The director was not the studio\'s first choice — they wanted a more experienced filmmaker.',
+    'The lead actor stuffed cotton in his cheeks during his audition to make his jaw look heavier.',
+    'The studio wanted Robert Redford or Ryan O\'Neal for the young lead, but the director refused.',
+    'The cat held by the main character in the opening scene was a stray found on the studio lot.',
+    '"I\'m gonna make him an offer he can\'t refuse" was ranked #2 on AFI\'s greatest movie quotes.',
+    'The horse head in the bed scene used a real horse head from a dog food factory.',
+    'The wedding scene that opens the film was shot over multiple days with hundreds of extras.',
+    'It was based on a bestselling novel by Mario Puzo, who also co-wrote the screenplay.',
+    'The film\'s score features a haunting trumpet melody composed by Nino Rota.',
+    'It depicts the transfer of power within a fictional Italian-American crime family.',
+    'The sequel is one of the rare films considered as good as or better than the original.',
+    'Marlon Brando won Best Actor but refused it to protest Hollywood\'s treatment of Native Americans.',
+    'Al Pacino stars as the youngest son who reluctantly takes over the family business.',
+    'Set primarily in 1940s New York, it follows the Corleone family.',
+    'Widely regarded as one of the greatest films ever made, directed by Francis Ford Coppola in 1972.',
+  ]},
+  {answer:'Jurassic Park',accepted:['jurassic park'],clues:[
+    'The film was based on a novel the director optioned before it was even published.',
+    'Production used a mix of CGI and full-scale animatronics, some weighing over 9,000 pounds.',
+    'The water-in-the-glass tremor effect was achieved by plucking a guitar string beneath the dashboard.',
+    'Hurricane Iniki hit the Hawaiian filming location during production.',
+    'The sound designers mixed baby elephants, alligators, and tigers to create the creature sounds.',
+    'Phil Tippett was credited as "dinosaur supervisor" despite his stop-motion approach being replaced by CGI.',
+    'The kitchen scene with the children was so tense that test audiences reported difficulty breathing.',
+    'A paleontologist and a mathematician join a preview tour of a theme park on a remote island.',
+    'The programmer who sabotages the security system is played by Wayne Knight from Seinfeld.',
+    '"Must go faster" was ad-libbed by Jeff Goldblum during a famous chase scene.',
+    'It was the highest-grossing film ever made at the time of its release in 1993.',
+    'The film spawned a massive franchise with multiple sequels and a theme park ride.',
+    'Its most iconic scene features a T. rex chasing a Jeep in the pouring rain.',
+    'Sam Neill, Laura Dern, and Jeff Goldblum star as the leads.',
+    'Steven Spielberg\'s 1993 blockbuster about a theme park where cloned dinosaurs escape.',
+  ]},
+  {answer:'Pulp Fiction',accepted:['pulp fiction'],clues:[
+    'The director wrote the screenplay while staying in Amsterdam, inspired by European crime films.',
+    'The briefcase glows gold when opened, but its contents are never revealed.',
+    'The film\'s non-linear narrative was considered revolutionary at the time.',
+    'John Travolta\'s career was revived by his role as a philosophizing hitman.',
+    'Uma Thurman\'s character overdoses, requiring an adrenaline injection to the heart.',
+    'The director originally considered himself for the boxer role, but cast Bruce Willis instead.',
+    'Samuel L. Jackson\'s monologue quoting Ezekiel 25:17 became one of cinema\'s most famous speeches.',
+    'The Jack Rabbit Slim\'s restaurant scene features an iconic twist dance contest.',
+    'It interweaves storylines involving hitmen, a boxer, a gangster\'s wife, and two petty criminals.',
+    'Christopher Walken delivers an absurd monologue about hiding a watch in a prison camp.',
+    'Tim Roth and Amanda Plummer play a couple who attempt to rob a diner.',
+    'It won the Palme d\'Or at the 1994 Cannes Film Festival.',
+    'The soundtrack features surf rock and classic soul, including Chuck Berry and Dusty Springfield.',
+    'It revitalized independent cinema and made its director a household name.',
+    'Quentin Tarantino\'s 1994 crime film known for its nonlinear storyline and sharp dialogue.',
+  ]},
+  {answer:'Titanic',accepted:['titanic'],clues:[
+    'The director made over a dozen deep-sea dives to the actual wreck to film footage.',
+    'Production cost $200 million — the most expensive film ever made at the time.',
+    'A 17-million-gallon water tank was built in Mexico with a nearly full-scale ship replica.',
+    'The drawing scene was done by the director\'s own hand, not the actor\'s.',
+    'The elderly version of the female lead was played by Gloria Stuart, old enough to have lived through the real event.',
+    'Kate Winslet was one of the few actors who didn\'t wear a wetsuit and got pneumonia during filming.',
+    'The director almost drowned when his jacket caught in a railing underwater.',
+    '"My Heart Will Go On" by Céline Dion became the best-selling single of 1998.',
+    'It tied "Ben-Hur" for the most Academy Awards ever won by a single film: eleven.',
+    'The film follows a forbidden love story between passengers from different social classes.',
+    'The famous "I\'m the king of the world!" line was improvised by the lead actor.',
+    'Leonardo DiCaprio and Kate Winslet star as the doomed lovers.',
+    'It was the first film to gross over $1 billion worldwide.',
+    'The ship sinks after striking an iceberg on its maiden voyage.',
+    'James Cameron\'s 1997 epic about the most famous shipwreck in history.',
+  ]},
+],
+history: [
+  {answer:'Cleopatra',accepted:['cleopatra','cleopatra vii'],clues:[
+    'Born around 69 BC into a dynasty of Macedonian Greek origin, not Egyptian.',
+    'She was one of the few rulers in her dynasty who bothered to learn the Egyptian language.',
+    'She reportedly spoke nine languages fluently.',
+    'She came to power at around age 18, ruling jointly with her younger brother.',
+    'She was forced into exile but raised an army to reclaim her throne.',
+    'She allegedly had herself smuggled into a palace in a rolled-up carpet or linen sack.',
+    'She formed an alliance with a Roman general later assassinated on the Ides of March.',
+    'She had a son whose nickname translates to "Little Caesar."',
+    'She sailed to meet another Roman leader on an elaborate golden barge.',
+    'She reportedly dissolved a pearl in vinegar and drank it at a lavish banquet.',
+    'After the Battle of Actium in 31 BC, her forces were defeated by Octavian.',
+    'She died in Alexandria in 30 BC — legend says she used an asp.',
+    'Her death marked the end of the Ptolemaic Kingdom; Egypt became a Roman province.',
+    'Elizabeth Taylor famously portrayed her in a 1963 film.',
+    'The last active ruler of the Ptolemaic Kingdom of Egypt, one of history\'s most famous queens.',
+  ]},
+  {answer:'Leonardo da Vinci',accepted:['leonardo da vinci','da vinci','leonardo'],clues:[
+    'Born in 1452 in the Tuscan hill town of Vinci, the illegitimate son of a notary.',
+    'Because he was born out of wedlock, he was barred from university and most guilds.',
+    'He was apprenticed to the artist Andrea del Verrocchio in Florence as a teenager.',
+    'He wrote all of his notes in mirror script — right to left — possibly to keep them private.',
+    'He designed flying machines, tanks, and solar power concentrators centuries before they were built.',
+    'He dissected over 30 human corpses to study anatomy, producing detailed drawings.',
+    'He spent 16 years on a massive bronze horse statue for the Duke of Milan that was never finished.',
+    'He served as a military engineer for Cesare Borgia, designing fortifications and weapons.',
+    'His "Last Supper" mural began deteriorating almost immediately due to his experimental technique.',
+    'He spent the last three years of his life in France as a guest of King Francis I.',
+    'His notebooks contain over 7,000 pages of sketches, inventions, and scientific observations.',
+    'He painted a portrait now behind bulletproof glass in Paris — the most famous painting in the world.',
+    'He is the archetype of the "Renaissance man" — genius in painting, science, and engineering.',
+    'His works include the Vitruvian Man, a study of human proportions in a circle and square.',
+    'An Italian polymath who painted the Mona Lisa and The Last Supper.',
+  ]},
+  {answer:'Genghis Khan',accepted:['genghis khan','genghis','chinggis khan','temujin'],clues:[
+    'Born around 1162 with the name Temüjin, on the steppes of what is now Mongolia.',
+    'His father was poisoned by a rival tribe when he was just nine years old.',
+    'As a young man, he was enslaved by a rival clan but escaped by hiding in a river.',
+    'He united warring nomadic tribes through a combination of diplomacy and warfare.',
+    'He adopted a name meaning "Universal Ruler" in 1206 when the tribes proclaimed him leader.',
+    'He created a written legal code called the Yassa that governed his entire empire.',
+    'He established a mounted postal system called the Yam for messages across thousands of miles.',
+    'His armies used psychological warfare, creating fake soldiers from stuffed dummies on spare horses.',
+    'He was remarkably tolerant of different religions, exempting religious leaders from taxation.',
+    'His empire stretched from the Pacific Ocean to Eastern Europe.',
+    'Some historians estimate his conquests killed 40 million people — about 10% of the world\'s population.',
+    'A 2003 genetics study found roughly 1 in 200 men alive today are his direct descendants.',
+    'The exact location of his burial site remains one of history\'s greatest mysteries.',
+    'He died in 1227 — legend says from injuries falling from his horse.',
+    'The founder of the Mongol Empire, the largest contiguous land empire in human history.',
+  ]},
+  {answer:'Abraham Lincoln',accepted:['abraham lincoln','lincoln','abe lincoln'],clues:[
+    'Born in a one-room log cabin in Hardin County, Kentucky in 1809.',
+    'He had less than a year of formal schooling, educating himself by reading borrowed books.',
+    'He worked as a rail-splitter, store clerk, and postmaster before entering politics.',
+    'He lost multiple elections — including two Senate races — before winning the presidency.',
+    'His wife, Mary Todd, came from a wealthy Kentucky family and was socially ambitious.',
+    'He delivered a famous two-minute speech at a battlefield in Pennsylvania that redefined democracy.',
+    'He suspended habeas corpus during the Civil War, one of his most controversial decisions.',
+    'He issued the Emancipation Proclamation on January 1, 1863.',
+    'He was the first Republican president of the United States.',
+    'He grew his iconic beard after an 11-year-old girl wrote suggesting it would improve his appearance.',
+    'At 6\'4", he remains the tallest president in American history.',
+    'He is widely considered the greatest orator in presidential history.',
+    'He was shot while watching a play at Ford\'s Theatre on April 14, 1865.',
+    'His assassin, John Wilkes Booth, was a well-known actor.',
+    'The 16th President, who led the country through the Civil War and abolished slavery.',
+  ]},
+  {answer:'Napoleon Bonaparte',accepted:['napoleon','napoleon bonaparte','bonaparte'],clues:[
+    'Born in 1769 on the island of Corsica, one year after it was transferred from Genoa to France.',
+    'He was bullied at military academy for his Corsican accent and short stature.',
+    'He rose to prominence by defending the revolutionary government with cannon fire on royalist rebels.',
+    'He led an expedition to Egypt in 1798, bringing 167 scientists who made major archaeological discoveries.',
+    'His soldiers discovered the Rosetta Stone, which unlocked Egyptian hieroglyphics.',
+    'He crowned himself Emperor in 1804, taking the crown from the Pope\'s hands.',
+    'He sold the Louisiana Territory to the United States for roughly 4 cents per acre.',
+    'He introduced the Napoleonic Code, still the basis of civil law in many countries.',
+    'His disastrous 1812 invasion of Russia saw his army of 600,000 reduced to fewer than 100,000.',
+    'He was exiled to the island of Elba in 1814 but escaped and returned to power for 100 days.',
+    'He was definitively defeated at a famous battle in Belgium in 1815.',
+    'He spent his final years in exile on the remote island of Saint Helena.',
+    'Contrary to popular belief, he was average height for his era — about 5\'7".',
+    'He died in 1821; some historians believe he was slowly poisoned with arsenic.',
+    'A French military leader and Emperor who conquered much of Europe, defeated at Waterloo.',
+  ]},
+],
+science: [
+  {answer:'Marie Curie',accepted:['marie curie','curie','maria curie'],clues:[
+    'Born Maria Sklodowska in Warsaw, Poland in 1867.',
+    'She attended a secret underground university because women were barred from higher education in Poland.',
+    'She moved to Paris in 1891 to study at the Sorbonne, often too poor to afford food.',
+    'She married a fellow physicist in one of the most famous scientific partnerships in history.',
+    'She coined the term "radioactivity" to describe the phenomenon she studied.',
+    'She discovered two new elements, one named after her home country.',
+    'She became the first woman to win a Nobel Prize, in 1903.',
+    'After her husband died in a road accident, she took over his teaching position at the Sorbonne.',
+    'She won a second Nobel Prize in 1911 in Chemistry — the first person to win in two different sciences.',
+    'During World War I, she developed mobile X-ray units nicknamed "Little Curies."',
+    'Her laboratory notebooks are still radioactive and kept in lead-lined boxes.',
+    'She refused to patent the radium isolation process, believing it should be freely available.',
+    'She died in 1934 from aplastic anemia, likely from years of radiation exposure.',
+    'Her remains were moved to the Panthéon in Paris in 1995.',
+    'The most famous female scientist in history, known for pioneering research on radioactivity.',
+  ]},
+  {answer:'Albert Einstein',accepted:['albert einstein','einstein'],clues:[
+    'Born in Ulm, Germany in 1879, he didn\'t speak fluently until around age four.',
+    'He failed the entrance exam to the Swiss Federal Polytechnic on his first attempt.',
+    'He worked as a patent clerk in Bern, Switzerland while developing his revolutionary theories.',
+    'In 1905, his "miracle year," he published four groundbreaking papers that transformed physics.',
+    'He won the Nobel Prize in Physics in 1921 — not for relativity, but for the photoelectric effect.',
+    'He fled Nazi Germany in 1933 and settled in Princeton, New Jersey.',
+    'He wrote a letter to President Roosevelt warning Germany might develop an atomic bomb.',
+    'He was offered the presidency of Israel in 1952 but turned it down.',
+    'His brain was removed during autopsy without his family\'s permission and studied for decades.',
+    'He played the violin throughout his life and loved Mozart.',
+    'He spent the last 30 years of his life trying to develop a unified field theory.',
+    'His equation showed that mass and energy are interchangeable.',
+    'His theory of general relativity predicted that gravity bends light, confirmed during a 1919 eclipse.',
+    'His wild hair and rumpled appearance became iconic symbols of genius.',
+    'The most famous physicist of the 20th century, known for E=mc².',
+  ]},
+  {answer:'Nikola Tesla',accepted:['nikola tesla','tesla'],clues:[
+    'Born during a lightning storm in 1856 in Smiljan, in modern-day Croatia.',
+    'He could visualize complex machines entirely in his mind before building them.',
+    'He worked briefly for Thomas Edison but they had a bitter falling out over payment.',
+    'He demonstrated wireless lighting by electrifying vacuum tubes in his hands at the 1893 World\'s Fair.',
+    'He won the "War of the Currents," proving alternating current was superior to direct current.',
+    'He designed the first hydroelectric power plant at Niagara Falls.',
+    'He claimed to have received radio signals from outer space, which many dismissed as delusion.',
+    'He built a massive tower on Long Island called Wardenclyffe to transmit electricity wirelessly.',
+    'He developed the rotating magnetic field, the basis of most modern electric motors.',
+    'He suffered from severe OCD, insisting on hotel room numbers divisible by three.',
+    'He spent his final years alone in a New York hotel, feeding and befriending pigeons.',
+    'He died penniless in 1943, despite his inventions powering the modern world.',
+    'The FBI seized his papers after his death, fueling conspiracy theories.',
+    'An electric car company was named after him more than 60 years after his death.',
+    'A Serbian-American inventor who pioneered alternating current (AC) electrical systems.',
+  ]},
+  {answer:'Charles Darwin',accepted:['charles darwin','darwin'],clues:[
+    'Born in Shrewsbury, England in 1809 to a wealthy and prominent family.',
+    'He dropped out of medical school after being horrified by surgery without anesthesia.',
+    'He nearly missed the voyage that made him famous because the captain disliked the shape of his nose.',
+    'He spent five years aboard HMS Beagle, collecting specimens across South America and the Pacific.',
+    'He observed that finches on different islands had differently shaped beaks adapted to local food.',
+    'He sat on his theory for over 20 years, terrified of the social and religious backlash.',
+    'He was forced to publish after Alfred Russel Wallace independently arrived at the same conclusion.',
+    'His book "On the Origin of Species" sold out its first print run on the first day in 1859.',
+    'He married his first cousin, Emma Wedgwood, and they had ten children.',
+    'He suffered from a mysterious chronic illness for most of his adult life.',
+    'Thomas Huxley — called his "Bulldog" — famously debated Bishop Wilberforce about the theory.',
+    'He also wrote "The Descent of Man" about human ancestry.',
+    'He studied barnacles obsessively for eight years, becoming the world\'s leading expert on them.',
+    'He is buried in Westminster Abbey, near Isaac Newton.',
+    'The English naturalist who proposed the theory of evolution by natural selection.',
+  ]},
+  {answer:'Isaac Newton',accepted:['isaac newton','newton'],clues:[
+    'Born prematurely in 1643 in Woolsthorpe, England; reportedly small enough to fit in a quart mug.',
+    'His father died before he was born, and his mother abandoned him to his grandmother.',
+    'He was a notoriously difficult and vindictive person, holding grudges for decades.',
+    'He made many of his greatest discoveries in 1665-1666 while Cambridge was closed due to plague.',
+    'The story of a falling fruit inspiring his gravity theory is likely exaggerated but based on fact.',
+    'He built the first practical reflecting telescope.',
+    'He secretly practiced alchemy, writing more about it than about physics or mathematics.',
+    'He invented calculus, sparking a bitter priority dispute with Gottfried Leibniz.',
+    'He served as Master of the Royal Mint, personally pursuing counterfeiters.',
+    'He was elected to Parliament but reportedly spoke only once — to ask someone to close a window.',
+    'His masterwork, the "Principia Mathematica," laid the foundation for classical mechanics.',
+    'He described three laws of motion still taught in every physics classroom.',
+    'He showed that white light is composed of a spectrum of colors using a prism.',
+    'He famously said, "If I have seen further, it is by standing on the shoulders of giants."',
+    'An English mathematician and physicist who formulated the laws of motion and universal gravitation.',
+  ]},
+],
+tv: [
+  {answer:'Breaking Bad',accepted:['breaking bad'],clues:[
+    'The creator originally set the show in California but moved to Albuquerque for tax incentives.',
+    'The pilot was written in 2005 but a writers\' strike delayed production by over a year.',
+    'The main character was originally supposed to be killed off in the first season.',
+    'A chemistry teacher starts a double life after a devastating medical diagnosis.',
+    'The main character\'s former student becomes his unlikely business partner.',
+    'A restaurant called Los Pollos Hermanos serves as a front for a drug operation.',
+    'The DEA agent hunting the main villain is actually his own brother-in-law.',
+    'The show features a notorious scene involving a body dissolving through a bathtub and ceiling.',
+    'Gustavo Fring maintains a calm demeanor while running a drug empire.',
+    'The costume designer assigned specific signature colors to each character.',
+    'An RV in the New Mexico desert serves as the first mobile laboratory.',
+    '"Say my name" became one of the most quoted lines from the series.',
+    'The show spawned a prequel series called "Better Call Saul."',
+    'It aired on AMC from 2008 to 2013.',
+    'Bryan Cranston stars as a chemistry teacher who turns to cooking methamphetamine.',
+  ]},
+  {answer:'The Sopranos',accepted:['the sopranos','sopranos'],clues:[
+    'The show was turned down by several networks before being picked up by premium cable.',
+    'The creator originally envisioned it as a film about a mobster in therapy.',
+    'The lead actor had never held a major leading role before being cast.',
+    'The opening credits show the main character driving from New York City to New Jersey.',
+    'A psychiatrist named Dr. Melfi becomes an unlikely window into the main character\'s psyche.',
+    'A duck family in a swimming pool triggers the main character\'s first panic attack.',
+    'It frequently blurred the line between biological family and crime family.',
+    'It was filmed primarily in northern New Jersey, using real locations.',
+    'The show depicted the decline of the Italian-American mafia and modern organized crime.',
+    '"Don\'t Stop Believin\'" by Journey plays during the controversial final scene.',
+    'The finale cut to black mid-scene, sparking years of debate about what happened.',
+    'It won 21 Primetime Emmy Awards over its six-season run.',
+    'It is widely credited with launching the "Golden Age of Television."',
+    'It aired on HBO from 1999 to 2007.',
+    'A groundbreaking HBO drama about a New Jersey mob boss, played by James Gandolfini, who sees a therapist.',
+  ]},
+  {answer:'Game of Thrones',accepted:['game of thrones','got'],clues:[
+    'Based on a fantasy book series the author began writing in 1991.',
+    'The original unaired pilot was so bad it was completely reshot with several roles recast.',
+    'The show became famous for killing off major characters when viewers least expected it.',
+    'A pivotal early execution shocked viewers and made clear no character was safe.',
+    'Filmed across Northern Ireland, Croatia, Iceland, and Morocco.',
+    'The budget grew from $6 million per episode to over $15 million by the final season.',
+    'An episode known as "The Red Wedding" caused shocked reactions worldwide.',
+    'Three dragons, brought to life with CGI, became some of the show\'s most beloved characters.',
+    'The Iron Throne was forged from the swords of defeated enemies.',
+    'The phrase "Winter is coming" became a cultural catchphrase warning of danger.',
+    'Multiple rival families fight for control of a continent called Westeros.',
+    'The final season was controversial, with a petition signed by 1.8 million fans for a remake.',
+    'The author, George R.R. Martin, still hasn\'t finished the book series.',
+    'It won 59 Primetime Emmy Awards — the most by any drama series in history.',
+    'An HBO fantasy epic based on "A Song of Ice and Fire," featuring noble houses battling for a kingdom.',
+  ]},
+  {answer:'Seinfeld',accepted:['seinfeld'],clues:[
+    'The pilot was originally titled "The Seinfeld Chronicles" and nearly wasn\'t picked up.',
+    'NBC executives described the show as "too New York, too Jewish" after the pilot.',
+    'Co-created by the star and a comedian who went on to create "Curb Your Enthusiasm."',
+    'Proudly described as "a show about nothing" — episodes centered on trivial everyday situations.',
+    'Four friends spend most of their time in an apartment and a diner on the Upper West Side.',
+    'A recurring character named Newman serves as the main character\'s nemesis.',
+    'It invented catchphrases like "yada yada yada" and "not that there\'s anything wrong with that."',
+    'An episode about a self-restraint contest won an Emmy.',
+    'Frank Costanza\'s invention of the holiday "Festivus" entered real-world culture.',
+    'The "Soup Nazi" episode was based on a real New York soup vendor.',
+    'George Costanza was largely based on co-creator Larry David.',
+    'The finale put the four main characters on trial for their callous behavior.',
+    'It aired on NBC from 1989 to 1998, consistently ranking #1 in America.',
+    'The final episode was watched by 76 million viewers.',
+    'A sitcom starring a comedian playing himself, often called the greatest sitcom of all time.',
+  ]},
+  {answer:'The Office',accepted:['the office'],clues:[
+    'Adapted from a British series created by Ricky Gervais and Stephen Merchant.',
+    'The American pilot was almost a shot-for-shot remake of the British version.',
+    'The lead was a last-minute casting choice; Bob Odenkirk and Paul Giamatti were also considered.',
+    'Filmed in a mockumentary style, with characters frequently breaking the fourth wall.',
+    'The paper company at the center is headquartered in Scranton, Pennsylvania.',
+    'An ongoing romance between a sales rep and a receptionist became the emotional core.',
+    'The boss is both painfully awkward and surprisingly lovable.',
+    '"That\'s what she said" became the boss\'s signature catchphrase.',
+    'Dwight Schrute, a beet farmer and assistant (to the) regional manager, became a fan favorite.',
+    'The show includes a movie-within-a-show called "Threat Level Midnight."',
+    'When the lead actor left after Season 7, the show continued for two more seasons.',
+    'Jim and Pam\'s wedding featured the cast dancing down the aisle.',
+    'It aired on NBC from 2005 to 2013 but became even more popular on streaming.',
+    'It was the most-streamed show in the United States for multiple years.',
+    'A mockumentary sitcom starring Steve Carell as the bumbling manager Michael Scott.',
+  ]},
+],
+geography: [
+  {answer:'The Amazon River',accepted:['the amazon river','amazon river','amazon','the amazon'],clues:[
+    'Its source is a glacial stream in the Andes of Peru, at over 17,000 feet elevation.',
+    'During wet season, it can widen to over 30 miles across in some areas.',
+    'It discharges more water into the ocean than the next seven largest rivers combined.',
+    'There are no bridges crossing it along its entire length.',
+    'It is home to the boto, a pink-colored freshwater dolphin surrounded by legends.',
+    'A species of catfish here can grow over 10 feet long and weigh 450 pounds.',
+    'In 2007, Martin Strel swam its entire length — 3,274 miles — over 66 days.',
+    'A tidal bore called the Pororoca sends waves up to 13 feet high rushing upriver.',
+    'It flows through or borders seven South American countries.',
+    'Its basin contains roughly 10% of all species on Earth.',
+    'Explorer Francisco de Orellana named it after the warrior women of Greek mythology.',
+    'It creates a massive freshwater plume visible from space pushing into the Atlantic.',
+    'It runs through the world\'s largest tropical rainforest.',
+    'Scientists debate whether it or the Nile is the longest river in the world.',
+    'The largest river by volume in the world, flowing through South America.',
+  ]},
+  {answer:'Mount Everest',accepted:['mount everest','everest','mt everest','mt. everest'],clues:[
+    'Formed roughly 50 million years ago when the Indian plate collided with the Eurasian plate.',
+    'It grows about 4 millimeters taller each year due to ongoing geological forces.',
+    'It was originally known as "Peak XV" by British surveyors.',
+    'It is called "Chomolungma" in Tibetan, meaning "Goddess Mother of the World."',
+    'An Indian mathematician named Radhanath Sikdar first calculated its height in 1852.',
+    'It straddles the border between Nepal and Tibet (China).',
+    'The "Death Zone" above 26,000 feet has so little oxygen the body begins to die.',
+    'Over 300 people have died attempting to climb it, with many bodies remaining.',
+    'The 1996 disaster was chronicled in Jon Krakauer\'s book "Into Thin Air."',
+    'The Khumbu Icefall is considered one of the most dangerous sections of the climb.',
+    'Tenzing Norgay and Edmund Hillary first reached the summit in 1953.',
+    'Kami Rita Sherpa holds the record for the most ascents — over 25 times.',
+    'The summit has become so crowded that climbers sometimes wait in long lines.',
+    'Its official height is 29,032 feet (8,849 meters).',
+    'The tallest mountain on Earth, located in the Himalayas.',
+  ]},
+  {answer:'The Sahara Desert',accepted:['the sahara desert','sahara desert','sahara','the sahara'],clues:[
+    'About 8,000 years ago, it was a green, fertile landscape with lakes and rivers.',
+    'Cave paintings in the region depict swimming, hunting, and cattle herding from this wetter period.',
+    'It spans 11 countries across North Africa.',
+    'Only about 25% of it is actually sandy — the rest is rocky plateaus and gravel plains.',
+    'Its highest point, Mount Koussi in Chad, rises to over 11,000 feet.',
+    'Temperatures can swing from over 130°F during the day to below freezing at night.',
+    'The Tuareg, known as "Blue Men of the Desert," have traversed it for thousands of years.',
+    'Ancient trade routes carried gold, salt, and enslaved people across it.',
+    'It contains the Richat Structure — a massive bullseye visible from space.',
+    'Sand from here regularly crosses the Atlantic, fertilizing the Amazon rainforest.',
+    'In 1979 and 2018, snow fell on parts of it — an extremely rare occurrence.',
+    'Its name comes from the Arabic word meaning simply "desert."',
+    'It is roughly the same size as the United States or China.',
+    'It is expanding southward due to climate change.',
+    'The largest hot desert in the world, covering most of North Africa.',
+  ]},
+  {answer:'The Great Barrier Reef',accepted:['the great barrier reef','great barrier reef'],clues:[
+    'Formed over millions of years by trillions of tiny organisms called coral polyps.',
+    'Indigenous peoples have lived alongside it for over 60,000 years.',
+    'Captain James Cook discovered it in 1770 when his ship ran aground on it.',
+    'It is the only living structure on Earth visible from space.',
+    'It contains over 1,500 species of fish and 400 types of coral.',
+    'It stretches over 1,400 miles along the northeastern coast of a continent.',
+    'Crown-of-thorns starfish periodically ravage it, consuming coral rapidly.',
+    'Marine biologists have documented extensive "bleaching events" from rising temperatures.',
+    'It generates about $6 billion annually in tourism revenue.',
+    'Six species of sea turtles use it as a breeding ground.',
+    'It was designated a UNESCO World Heritage Site in 1981.',
+    'It has lost over half its coral cover since 1995 due to warming waters.',
+    'Efforts to protect it include banning certain fishing practices and limiting shipping.',
+    'It is located in the Coral Sea off the coast of Queensland, Australia.',
+    'The world\'s largest coral reef system, one of Earth\'s most biodiverse ecosystems.',
+  ]},
+  {answer:'Iceland',accepted:['iceland'],clues:[
+    'It sits on the Mid-Atlantic Ridge, where two tectonic plates are pulling apart.',
+    'Despite its name, only about 11% is covered by glaciers.',
+    'Settled by Norse Vikings around 874 AD, one of the last places in Europe to be inhabited.',
+    'It has one of the world\'s oldest parliaments, the Althing, established in 930 AD.',
+    'Its capital is the northernmost capital of any sovereign nation.',
+    'Geothermal energy heats about 90% of its homes; nearly 100% of electricity is renewable.',
+    'It has no standing army, navy, or air force.',
+    'The 2010 eruption of Eyjafjallajökull grounded air traffic across Europe for weeks.',
+    'All three of its major banks collapsed during the 2008 financial crisis.',
+    'It is one of the best places on Earth to see the Northern Lights.',
+    'Its language has changed so little that residents can still read Viking-era sagas.',
+    'It has more than 30 active volcanic systems and hundreds of hot springs.',
+    'Björk and Sigur Rós are among its most famous musical exports.',
+    'The Blue Lagoon geothermal spa is one of its most visited attractions.',
+    'A Nordic island nation known for its volcanoes, geysers, hot springs, and dramatic landscapes.',
+  ]},
+],
+literature: [
+  {answer:'To Kill a Mockingbird',accepted:['to kill a mockingbird','tkam'],clues:[
+    'The author based it on her own childhood in Monroeville, Alabama in the 1930s.',
+    'The author\'s childhood friend and neighbor, Truman Capote, inspired one of the characters.',
+    'The manuscript was nearly lost when the author threw it out a window in frustration.',
+    'Written in the late 1950s but set during the Great Depression.',
+    'The narrator is a young tomboy whose nickname comes from her last name.',
+    'A reclusive neighbor becomes a source of mystery and fascination for the children.',
+    'The father is a lawyer defending a Black man falsely accused of a crime.',
+    'A mad dog in the street reveals the father\'s hidden skill as a marksman.',
+    'The novel explores themes of racial injustice in the Deep South.',
+    'The courtroom scene is one of the most famous in American literature.',
+    'Boo Radley is eventually revealed to be a protector, not a threat.',
+    'It won the Pulitzer Prize for Fiction in 1961.',
+    'Gregory Peck starred as the father in the 1962 film adaptation.',
+    'The author, Harper Lee, published only one other novel — "Go Set a Watchman."',
+    'One of the most read novels in America, featuring Atticus Finch and his daughter Scout.',
+  ]},
+  {answer:'1984',accepted:['1984','nineteen eighty-four','nineteen eighty four'],clues:[
+    'The author originally titled it "The Last Man in Europe."',
+    'Written while the author was severely ill with tuberculosis on a remote Scottish island.',
+    'Finished in 1948 — the title may come from reversing the last two digits of that year.',
+    'Published in June 1949, just seven months before the author\'s death.',
+    'It depicts a world divided into three perpetually warring superstates.',
+    'The government controls language through a simplified vocabulary called "Newspeak."',
+    'The "Ministry of Truth" handles propaganda and historical revisionism.',
+    '"Room 101" contains each prisoner\'s worst fear — for the protagonist, it\'s rats.',
+    '"Thoughtcrime" — harboring unspoken beliefs against the state — can be punished.',
+    '"War is Peace, Freedom is Slavery, Ignorance is Strength" is the Party\'s slogan.',
+    'Telescreens in every home watch and listen to citizens at all times.',
+    'The protagonist, Winston Smith, begins a forbidden love affair and secret rebellion.',
+    'The villain, "Big Brother," has become a universal symbol of government surveillance.',
+    'The author also wrote "Animal Farm."',
+    'A dystopian novel by George Orwell about totalitarian surveillance: "Big Brother is watching you."',
+  ]},
+  {answer:'Harry Potter',accepted:['harry potter','harry potter series'],clues:[
+    'The author conceived the idea on a delayed train from Manchester to London in 1990.',
+    'The manuscript was rejected by 12 publishers before being accepted.',
+    'A publisher\'s eight-year-old daughter read the first chapter and demanded more.',
+    'The author was a single mother on welfare when she wrote the first book.',
+    'The world includes a hidden London street where witches and wizards buy supplies.',
+    'A sorting ceremony assigns students to one of four houses based on personality.',
+    'The main villain\'s name is so feared that most characters refuse to say it.',
+    'A sport on broomsticks features a golden ball worth 150 points that ends the game.',
+    'The main character discovers on his 11th birthday he\'s famous in a hidden world.',
+    'A magical map shows every person\'s location within the school.',
+    'Seven books chart the hero\'s journey from age 11 to 17 as a dark wizard rises.',
+    'The film series became the third highest-grossing franchise in cinema history.',
+    'Theme parks in Orlando and Osaka bring the fictional school to life.',
+    'The school is called Hogwarts, and the headmaster is Albus Dumbledore.',
+    'J.K. Rowling\'s series about a young wizard at a school of witchcraft and wizardry.',
+  ]},
+  {answer:'The Great Gatsby',accepted:['the great gatsby','great gatsby'],clues:[
+    'Written while the author lived on the French Riviera, drawing on 1920s New York.',
+    'It sold poorly in the author\'s lifetime — fewer than 25,000 copies before his death in 1940.',
+    'It was revived when 150,000 copies were distributed to soldiers during World War II.',
+    'Narrated by Nick Carraway, a bond salesman living next to a mysterious millionaire.',
+    'The title character throws lavish parties hoping to attract a specific guest.',
+    'A green light at the end of a dock symbolizes the protagonist\'s unreachable dream.',
+    'The "Valley of Ashes" between Long Island and New York represents moral decay.',
+    'Giant spectacles on a billboard — the eyes of Doctor T.J. Eckleburg — watch over a valley.',
+    'The title character claims to be an Oxford man but has a dubious bootlegging past.',
+    'Set during the Jazz Age, it explores wealth, class, and the corruption of the American Dream.',
+    'A hit-and-run accident sets in motion the tragic conclusion.',
+    'Its final line about "boats against the current" is one of the most famous in literature.',
+    'A 2013 film adaptation starred Leonardo DiCaprio.',
+    'The author, F. Scott Fitzgerald, is considered the chronicler of the Jazz Age.',
+    'A novel about a mysterious millionaire\'s obsessive love in 1920s Long Island.',
+  ]},
+  {answer:'Moby Dick',accepted:['moby dick','moby-dick'],clues:[
+    'The author dedicated it to Nathaniel Hawthorne.',
+    'Published in 1851, it was a commercial failure — about 3,000 copies sold in the author\'s lifetime.',
+    'The author drew on his own experiences as a sailor aboard whaling ships.',
+    'Its opening line — three words — is one of the most famous in all of literature.',
+    'The narrator shares a bed at an inn with a tattooed harpooner from the South Pacific.',
+    'The ship sets sail from Nantucket, the historical center of American whaling.',
+    'The captain has a peg leg made from a whale\'s jawbone.',
+    'Chapters alternate between narrative and encyclopedic descriptions of whales and whaling.',
+    'The diverse crew represents many nationalities, unusual for 19th-century American literature.',
+    'The first mate, Starbuck, urges the captain to abandon his obsessive quest.',
+    'A famous coffee chain took its name from that first mate.',
+    'The story is an allegory about obsession, fate, and humanity\'s struggle against nature.',
+    'The ship is named the Pequod, after a Native American people.',
+    'The captain, Ahab, is obsessed with hunting a great white whale that maimed him.',
+    'Herman Melville\'s 1851 epic about a sea captain\'s obsessive pursuit of a white whale.',
+  ]},
+],
+};
+
+const TOTAL_CLUES = 15;
+const PUZZLES_PER_CAT = 5;
+
+// ─── Session State ───
+let currentCat = null;
+let roundIdx = 0;           // 0-4 which puzzle in the session
+let sessionResults = [];     // [{won,cluesUsed,score,answer}]
+let revealedClues = 0;
+let guessed = false;
+let clueTimer = null;
+
+// ─── Helpers ───
+const $ = s => document.querySelector(s);
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  void $(`#${id}`).offsetWidth;
+  $(`#${id}`).classList.add('active');
+}
+function calcScore(n) { return (TOTAL_CLUES - n + 1) * 100; }
+function catObj() { return CATEGORIES.find(c => c.key === currentCat); }
+function sessionTotal() { return sessionResults.reduce((s, r) => s + r.score, 0); }
+
+// ─── localStorage ───
+function getData() { try { return JSON.parse(localStorage.getItem('oneshot_v3') || '{}'); } catch { return {}; } }
+function saveData(d) { localStorage.setItem('oneshot_v3', JSON.stringify(d)); }
+function getLastScore(cat) { return (getData()[cat] || {}).lastScore || null; }
+function saveCatResult(cat, results) {
+  const d = getData();
+  const total = results.reduce((s, r) => s + r.score, 0);
+  const wins = results.filter(r => r.won).length;
+  if (!d[cat]) d[cat] = {};
+  d[cat].lastScore = total;
+  d[cat].lastWins = wins;
+  d[cat].bestScore = Math.max(total, d[cat].bestScore || 0);
+  saveData(d);
+}
+function saveSession() {
+  const d = getData();
+  d._session = { cat: currentCat, roundIdx, results: sessionResults };
+  saveData(d);
+}
+function clearSession() {
+  const d = getData();
+  delete d._session;
+  saveData(d);
+}
+function loadSession() {
+  const d = getData();
+  return d._session || null;
+}
+
+// ─── Round Tracker ───
+function renderTracker(containerId) {
+  const el = $(containerId);
+  let html = '';
+  for (let i = 0; i < PUZZLES_PER_CAT; i++) {
+    let cls = 'round-dot';
+    let label = i + 1;
+    if (i < sessionResults.length) {
+      cls += sessionResults[i].won ? ' win' : ' lose';
+      label = sessionResults[i].won ? '✓' : '✗';
+    } else if (i === sessionResults.length) {
+      cls += ' current';
+    }
+    html += `<div class="${cls}">${label}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ─── Menu ───
+function renderMenu() {
+  const list = $('#category-list'); list.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const d = getData()[cat.key] || {};
+    const card = document.createElement('div');
+    card.className = 'category-card';
+    let badges = '';
+    if (d.bestScore) badges += `<span class="cat-badge progress">Best: ${d.bestScore}pts</span>`;
+    if (d.lastWins === PUZZLES_PER_CAT) badges += ` <span class="cat-badge done">✓ 5/5</span>`;
+    else if (d.lastWins > 0) badges += ` <span class="cat-badge streak">${d.lastWins}/5</span>`;
+    card.innerHTML = `<div class="cat-icon">${cat.icon}</div><div class="cat-name">${cat.label}</div><div class="cat-meta">${PUZZLES_PER_CAT} rounds · ${TOTAL_CLUES} clues each</div>${badges ? '<div>' + badges + '</div>' : ''}`;
+    card.addEventListener('click', () => startSession(cat.key));
+    list.appendChild(card);
+  });
+}
+
+// ─── Session Flow ───
+function startSession(catKey) {
+  currentCat = catKey;
+  roundIdx = 0;
+  sessionResults = [];
+  const cat = catObj();
+  $('#ready-icon').textContent = cat.icon;
+  $('#ready-title').textContent = cat.label;
+  $('#ready-sub').textContent = `${PUZZLES_PER_CAT} rounds · ${TOTAL_CLUES} clues each`;
+  show('ready');
+}
+
+$('#btn-back-ready').addEventListener('click', () => { show('menu'); renderMenu(); });
+$('#btn-start').addEventListener('click', startRound);
+
+function startRound() {
+  const puz = PUZZLES[currentCat][roundIdx];
+  revealedClues = 0; guessed = false;
+  if (clueTimer) clearInterval(clueTimer);
+  $('#clues-area').innerHTML = '';
+  $('#guess-input').value = ''; $('#guess-input').disabled = false;
+  $('#btn-shoot').disabled = false;
+  const cat = catObj();
+  $('#play-cat').textContent = `${cat.icon} ${cat.label}`;
+  $('#play-clue-count').textContent = `0 / ${puz.clues.length}`;
+  $('#progress-bar').style.width = '0%';
+  renderTracker('#play-tracker');
+  show('playing'); revealClue();
+  clueTimer = setInterval(() => { if (!guessed) revealClue(); }, 5000);
+  $('#guess-input').focus();
+}
+
+function revealClue() {
+  const puz = PUZZLES[currentCat][roundIdx];
+  if (revealedClues >= puz.clues.length) return;
+  const prev = $('#clues-area .clue-card.latest');
+  if (prev) prev.classList.remove('latest');
+  const idx = revealedClues;
+  const div = document.createElement('div');
+  div.className = 'clue-card latest';
+  div.innerHTML = `<div class="clue-num">Clue ${idx + 1}</div><div class="clue-text">${puz.clues[idx]}</div>`;
+  $('#clues-area').prepend(div);
+  revealedClues++;
+  $('#play-clue-count').textContent = `${revealedClues} / ${puz.clues.length}`;
+  $('#progress-bar').style.width = `${(revealedClues / puz.clues.length) * 100}%`;
+  if (revealedClues >= puz.clues.length && clueTimer) { clearInterval(clueTimer); clueTimer = null; }
+}
+
+$('#btn-shoot').addEventListener('click', () => submitGuess($('#guess-input').value));
+$('#guess-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitGuess($('#guess-input').value); });
+
+function submitGuess(raw) {
+  if (guessed) return;
+  const guess = raw.trim(); if (!guess.length) return;
+  guessed = true;
+  if (clueTimer) { clearInterval(clueTimer); clueTimer = null; }
+  const puz = PUZZLES[currentCat][roundIdx];
+  const won = isMatch(guess, puz.accepted);
+  const score = won ? calcScore(revealedClues) : 0;
+  sessionResults.push({ won, cluesUsed: revealedClues, score, answer: puz.answer, guess });
+  saveSession();
+  showRoundResult(won, guess, puz, revealedClues, score);
+}
+
+// ─── Match ───
+function isMatch(input, accepted) {
+  const n = input.toLowerCase().trim();
+  for (const a of accepted) { if (n === a || a.includes(n) || n.includes(a)) return true; if (lev(n, a) / Math.max(n.length, a.length) < 0.3) return true; }
+  return false;
+}
+function lev(a, b) {
+  const m = a.length, n = b.length, dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i; for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[m][n];
+}
+
+// ─── Round Result ───
+function showRoundResult(won, guess, puz, cluesUsed, score) {
+  renderTracker('#result-tracker');
+  $('#result-verdict').textContent = won ? 'NAILED IT' : 'MISSED';
+  $('#result-verdict').className = 'result-verdict ' + (won ? 'win' : 'lose');
+  const sp = $('#result-score');
+  if (won) { sp.style.display = 'block'; sp.textContent = score + ' pts'; } else { sp.style.display = 'none'; }
+  $('#result-answer').innerHTML = won
+    ? `<span class="big-answer">${puz.answer}</span>`
+    : `You guessed <strong>${guess}</strong><span class="big-answer missed">${puz.answer}</span>`;
+  $('#res-clue').textContent = `${cluesUsed}/${puz.clues.length}`;
+  $('#res-score').textContent = score;
+  $('#res-total').textContent = sessionTotal();
+  const isLast = roundIdx >= PUZZLES_PER_CAT - 1;
+  $('#btn-next-puzzle').textContent = isLast ? 'See Results' : 'Next Puzzle';
+  show('result');
+  if (won) launchConfetti(); else { $('#result-verdict').classList.add('shake'); setTimeout(() => $('#result-verdict').classList.remove('shake'), 600); }
+}
+
+$('#btn-next-puzzle').addEventListener('click', () => {
+  roundIdx++;
+  if (roundIdx >= PUZZLES_PER_CAT) {
+    saveCatResult(currentCat, sessionResults);
+    clearSession();
+    showSummary();
+  } else {
+    saveSession();
+    startRound();
+  }
+});
+$('#btn-quit').addEventListener('click', () => {
+  if (sessionResults.length > 0) saveCatResult(currentCat, sessionResults);
+  clearSession();
+  show('menu'); renderMenu();
+});
+
+// ─── Summary ───
+function showSummary() {
+  const cat = catObj();
+  const wins = sessionResults.filter(r => r.won).length;
+  const total = sessionTotal();
+  $('#summary-title').textContent = `${cat.icon} ${cat.label} Complete`;
+  $('#summary-score').textContent = total + ' pts';
+  $('#summary-sub').textContent = `${wins} of ${PUZZLES_PER_CAT} correct`;
+  renderTracker('#summary-tracker');
+
+  const rows = $('#summary-rows'); rows.innerHTML = '';
+  sessionResults.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'summary-row';
+    row.innerHTML = `<div class="sr-icon">${r.won ? '✅' : '❌'}</div><div class="sr-answer">${r.answer}</div><div class="sr-clues">${r.cluesUsed}/${TOTAL_CLUES}</div><div class="sr-pts">${r.score}</div>`;
+    rows.appendChild(row);
+  });
+
+  // Share card
+  const dots = sessionResults.map(r => r.won ? '🟩' : '🟥').join('');
+  const shareText = `ONESHOT ${cat.icon} ${cat.label}\n${dots}\n${wins}/${PUZZLES_PER_CAT} correct · ${total}pts`;
+  $('#share-card').textContent = shareText;
+  $('#share-card').dataset.text = shareText;
+  show('summary');
+  if (wins === PUZZLES_PER_CAT) launchConfetti();
+}
+
+$('#btn-share').addEventListener('click', () => {
+  navigator.clipboard.writeText($('#share-card').dataset.text).then(() => {
+    $('#toast').classList.add('show'); setTimeout(() => $('#toast').classList.remove('show'), 1800);
+  }).catch(() => {});
+});
+$('#btn-summary-menu').addEventListener('click', () => { clearSession(); show('menu'); renderMenu(); });
+$('#home-btn').addEventListener('click', () => { show('menu'); renderMenu(); });
+
+// ─── Confetti ───
+function launchConfetti() {
+  const c = $('#confetti'), ctx = c.getContext('2d'); c.width = innerWidth; c.height = innerHeight;
+  const colors = ['#06d6a0', '#6366f1', '#fbbf24', '#ef4444', '#3b82f6', '#ec4899'], ps = [];
+  for (let i = 0; i < 120; i++) ps.push({ x: c.width / 2 + (Math.random() - .5) * 200, y: c.height / 2, vx: (Math.random() - .5) * 16, vy: Math.random() * -18 - 4, w: Math.random() * 8 + 4, h: Math.random() * 6 + 2, color: colors[Math.floor(Math.random() * colors.length)], rot: Math.random() * Math.PI * 2, rv: (Math.random() - .5) * .3, g: .35 + Math.random() * .15, o: 1 });
+  let f = 0;
+  (function draw() { ctx.clearRect(0, 0, c.width, c.height); let alive = false; for (const p of ps) { p.x += p.vx; p.vy += p.g; p.y += p.vy; p.rot += p.rv; if (f > 40) p.o -= .015; if (p.o <= 0) continue; alive = true; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.max(0, p.o); ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); } f++; if (alive && f < 180) requestAnimationFrame(draw); else ctx.clearRect(0, 0, c.width, c.height); })();
+}
+
+// ─── Init: restore session or show menu ───
+const saved = loadSession();
+if (saved && saved.cat && PUZZLES[saved.cat]) {
+  currentCat = saved.cat;
+  roundIdx = saved.roundIdx;
+  sessionResults = saved.results || [];
+  if (roundIdx < PUZZLES_PER_CAT && sessionResults.length > roundIdx) {
+    // Already answered current round, show result screen
+    const r = sessionResults[roundIdx];
+    const puz = PUZZLES[currentCat][roundIdx];
+    showRoundResult(r.won, r.guess, puz, r.cluesUsed, r.score);
+  } else if (roundIdx < PUZZLES_PER_CAT) {
+    // Mid-session, start the next round
+    startRound();
+  } else {
+    clearSession();
+    renderMenu();
+  }
+} else {
+  renderMenu();
+}
+</script>
+</body>
+</html>
